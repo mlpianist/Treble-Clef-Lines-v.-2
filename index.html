@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Treble Clef Lines</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/vexflow@4.2.3/build/cjs/vexflow.js"></script>
+<style>
+  :root{
+    --ink: #1C1512;
+    --ink-soft: #2A211C;
+    --panel: #2F2620;
+    --panel-line: #4A3B30;
+    --ivory: #FBF7EE;
+    --ivory-dim: #C9BFAF;
+    --brass: #C9A227;
+    --brass-dim: #8A7220;
+    --ebony: #14100D;
+    --good: #4C8C3B;
+    --bad: #B04A3C;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{
+    font-family:'Inter', sans-serif;
+    background: var(--ink);
+    background-image:
+      radial-gradient(ellipse at 15% 0%, rgba(201,162,39,0.07), transparent 55%),
+      radial-gradient(ellipse at 100% 100%, rgba(201,162,39,0.05), transparent 50%);
+    color: var(--ivory);
+    min-height:100vh;
+  }
+  #app{ width:100%; min-height:100vh; display:flex; flex-direction:column; }
+  .screen{ display:none; flex:1; flex-direction:column; }
+  .screen.active{ display:flex; animation: rise .4s cubic-bezier(.2,.7,.3,1); }
+  @keyframes rise{ from{ opacity:0; transform: translateY(10px); } to{ opacity:1; transform:none; } }
+
+  h1{ font-family:'Fraunces', serif; font-weight:600; font-size: 2.1rem; letter-spacing:-0.01em; }
+  .subtitle{ color: var(--ivory-dim); font-size: 0.98rem; margin-top: 8px; line-height:1.5; }
+
+  /* ---------- Home ---------- */
+  #screen-home{ padding: 32px 24px 40px; max-width: 620px; margin: 0 auto; width:100%; }
+  .home-header{ margin-bottom: 26px; }
+  .level-grid{ display:grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  @media (max-width:520px){ .level-grid{ grid-template-columns: 1fr 1fr; } }
+  .level-card{
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 12px;
+    padding: 14px 12px 16px;
+    cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    transition: border-color .2s ease, transform .15s ease, background .2s ease;
+    overflow: visible;
+  }
+  .level-card:hover{ border-color: var(--brass-dim); background:#382C24; transform: translateY(-2px); }
+  .level-card svg{ width:100%; height:auto; display:block; }
+  .level-card .level-name{ font-family:'Fraunces', serif; font-weight:600; font-size:1rem; color: var(--brass); }
+  .review-card{
+    grid-column: 1 / -1;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 12px;
+    padding: 18px;
+    cursor:pointer;
+    text-align:center;
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size: 1.1rem;
+    color: var(--ivory);
+    transition: border-color .2s ease, background .2s ease;
+  }
+  .review-card:hover{ border-color: var(--brass-dim); background:#382C24; }
+
+  /* ---------- Game screen ---------- */
+  #screen-game{ height:100vh; }
+  .game-topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 16px 20px 8px;
+  }
+  .text-btn{ background:none; border:none; color: var(--ivory-dim); font-family:'Inter', sans-serif; font-size:0.9rem; cursor:pointer; padding:6px 0; }
+  .text-btn:hover{ color: var(--ivory); }
+
+  .score-display{ text-align:right; }
+  .score-value{ font-family:'Fraunces', serif; font-size:1.25rem; font-weight:600; color: var(--brass); font-variant-numeric: tabular-nums; }
+  .score-label{ font-size:0.7rem; color: var(--ivory-dim); }
+
+  .tracker-row{ display:flex; gap:10px; flex-wrap: wrap; justify-content:flex-end; max-width: 260px; }
+  .tracker-item{ text-align:center; }
+  .tracker-item .tv{ font-family:'Fraunces', serif; font-size:1rem; font-weight:600; color: var(--brass); font-variant-numeric: tabular-nums; }
+  .tracker-item .tl{ font-size:0.65rem; color: var(--ivory-dim); }
+
+  .staff-area{
+    height: 33vh;
+    min-height: 160px;
+    display:flex; align-items:center; justify-content:center;
+    padding: 0 16px;
+  }
+  #game-staff{ display:flex; align-items:center; justify-content:center; min-height:150px; }
+  .staff-mini{ display:flex; align-items:center; justify-content:center; width:100%; min-height: 105px; overflow: visible; }
+  .staff-mini svg, #game-staff svg{ max-width:100%; height:auto; display:block; overflow: visible; }
+
+  .playfield{
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    margin: 0 8px 16px;
+  }
+  #piano{
+    position:absolute;
+    top:0; left:0;
+    display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(180deg, var(--panel) 0%, var(--ink-soft) 100%);
+    border: 1px solid var(--panel-line);
+    border-radius: 14px;
+    transition: background .16s ease, top .35s ease, left .35s ease;
+  }
+  #piano.flash-good{ background: var(--good); }
+  #piano.flash-bad{ background: var(--bad); }
+  #piano-keys{ position:relative; }
+  .pkey{ position:absolute; top:0; border-radius: 0 0 5px 5px; box-sizing:border-box; cursor:pointer; }
+  .pkey.white{ background: linear-gradient(180deg, var(--ivory) 0%, #EFE8D8 100%); border: 1px solid #B9AF9C; z-index:1; }
+  .pkey.black{ background: linear-gradient(180deg, #2A231D 0%, var(--ebony) 100%); border: 1px solid #000; z-index:2; }
+  .pkey:active{ filter: brightness(0.92); }
+  .pkey-label{
+    position:absolute;
+    bottom:8px;
+    left:0;
+    right:0;
+    text-align:center;
+    font-family:'Inter', sans-serif;
+    font-size:0.55rem;
+    font-weight:700;
+    letter-spacing:0.02em;
+    color: var(--panel-line);
+    pointer-events:none;
+    user-select:none;
+  }
+
+  /* ---------- Result / review screens ---------- */
+  .result-screen{ margin:auto; text-align:center; padding: 40px 20px; max-width: 480px; }
+  .result-screen h1{ font-size: 2.1rem; }
+  .result-screen p{ color: var(--ivory-dim); margin-top: 12px; font-size: 1.02rem; }
+  .result-actions{ margin-top: 28px; }
+  .timestamp{ margin-top: 24px; font-size: 0.76rem; color: var(--panel-line); }
+  .primary-btn{
+    font-family:'Inter', sans-serif; font-weight:600; font-size:0.95rem;
+    padding: 13px 26px; border-radius: 9px; cursor:pointer; border:none;
+    background: var(--brass); color: var(--ink);
+  }
+  .primary-btn:hover{ background:#DDB233; }
+
+  #screen-review{ align-items:center; justify-content:center; padding: 30px; }
+  #review-image{ max-width: 100%; max-height: 60vh; border-radius: 10px; border: 1px solid var(--panel-line); }
+  .review-wrap{ text-align:center; }
+  .review-wrap .result-actions{ margin-top: 26px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME -->
+  <section id="screen-home" class="screen active">
+    <div class="home-header">
+      <h1>Treble Clef Lines</h1>
+      <p class="subtitle">Read the note on the staff, then find it on the keyboard.</p>
+    </div>
+    <div class="level-grid" id="level-grid"></div>
+  </section>
+
+  <!-- GAME -->
+  <section id="screen-game" class="screen">
+    <div class="game-topbar">
+      <button class="text-btn" id="quit-btn">&larr; Back to levels</button>
+      <div id="score-area"></div>
+    </div>
+    <div class="staff-area">
+      <div id="game-staff"></div>
+    </div>
+    <div class="playfield" id="playfield">
+      <div id="piano"><div id="piano-keys"></div></div>
+    </div>
+  </section>
+
+  <!-- SUCCESS -->
+  <section id="screen-success" class="screen">
+    <div class="result-screen">
+      <h1>Congratulations!</h1>
+      <p id="success-detail"></p>
+      <div class="result-actions">
+        <button class="primary-btn" id="success-home-btn">Back to levels</button>
+      </div>
+      <p id="success-timestamp" class="timestamp"></p>
+    </div>
+  </section>
+
+  <!-- REVIEW -->
+  <section id="screen-review" class="screen">
+    <div class="review-wrap">
+      <img id="review-image" src="treble clef lines.png" alt="Review"
+           onerror="this.style.display='none'; document.getElementById('review-fallback').style.display='block';">
+      <p id="review-fallback" style="display:none; color:var(--ivory-dim);">
+        Drop your review image in as <code>review-image.png</code> next to this file.
+      </p>
+      <div class="result-actions">
+        <button class="primary-btn" id="review-home-btn">Back to levels</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ================= Note pools =================
+  // Distractor space notes shown across all levels (fixed pool).
+  var SPACE_NOTES = ['F4','A4','C5','E5'];
+  // Line notes are the full set of possible targets across levels 1-6.
+  var LINE_NOTES = ['E4','G4','B4','D5','F5'];
+  var BASS_NOTES = ['A2','B2','C3','D3','E3','F3','G3'];
+  var TARGET_BY_LEVEL = { 1:'E4', 2:'G4', 3:'B4', 4:'D5', 5:'F5' };
+  var LEVEL6_TARGETS = ['E4','G4','B4','D5','F5'];
+
+  function randChoice(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+
+  // Levels 1-5: single target line note.
+  //  50%    -> target note, treble
+  //  25%    -> a different line note, treble
+  //  12.5%  -> a random space note, treble
+  //  12.5%  -> a random bass-clef note
+  function pickNoteForLevel(level){
+    var target = TARGET_BY_LEVEL[level];
+    var otherLines = LINE_NOTES.filter(function(n){ return n !== target; });
+    var r = Math.random();
+    if(r < 0.50) return { note: target, clef: 'treble', isTarget: true };
+    if(r < 0.75) return { note: randChoice(otherLines), clef: 'treble', isTarget: false };
+    if(r < 0.875) return { note: randChoice(SPACE_NOTES), clef: 'treble', isTarget: false };
+    return { note: randChoice(BASS_NOTES), clef: 'bass', isTarget: false };
+  }
+
+  // Level 6: five target line notes at once (E4, G4, B4, D5, F5).
+  //  75%    -> one of the still-active target notes, treble
+  //  12.5%  -> a random space note, treble
+  //  12.5%  -> a random bass-clef note
+  function pickNoteForLevel6(activeTargets){
+    var r = Math.random();
+    if(r < 0.75) return { note: randChoice(activeTargets), clef: 'treble', isTarget: true };
+    if(r < 0.875) return { note: randChoice(SPACE_NOTES), clef: 'treble', isTarget: false };
+    return { note: randChoice(BASS_NOTES), clef: 'bass', isTarget: false };
+  }
+
+  // ================= Keyboard (C4 - G5) =================
+  var CHROMATIC = [
+    ['C',4,'white'], ['C#',4,'black'], ['D',4,'white'], ['D#',4,'black'], ['E',4,'white'],
+    ['F',4,'white'], ['F#',4,'black'], ['G',4,'white'], ['G#',4,'black'], ['A',4,'white'],
+    ['A#',4,'black'], ['B',4,'white'],
+    ['C',5,'white'], ['C#',5,'black'], ['D',5,'white'], ['D#',5,'black'], ['E',5,'white'],
+    ['F',5,'white'], ['F#',5,'black'], ['G',5,'white']
+  ];
+
+  var FREQ = {
+    'C4':261.63,'C#4':277.18,'D4':293.66,'D#4':311.13,'E4':329.63,
+    'F4':349.23,'F#4':369.99,'G4':392.00,'G#4':415.30,'A4':440.00,
+    'A#4':466.16,'B4':493.88,'C5':523.25,'C#5':554.37,'D5':587.33,
+    'D#5':622.25,'E5':659.25,'F5':698.46,'F#5':739.99,'G5':783.99
+  };
+
+  var WHITE_W = 34, WHITE_H = 148, WHITE_SPACING = 36, BLACK_W = 20, BLACK_H = 92, BLACK_OFFSET = 25;
+
+  function buildKeyboardLayout(){
+    var whiteX = 0, lastWhiteX = 0;
+    var laid = CHROMATIC.map(function(k){
+      var letter = k[0], octave = k[1], type = k[2];
+      var name = letter + octave;
+      if(type === 'white'){
+        var pos = whiteX;
+        lastWhiteX = whiteX;
+        whiteX += WHITE_SPACING;
+        return { name:name, letter:letter[0], octave:octave, type:type, pos:pos };
+      } else {
+        return { name:name, letter:letter[0], octave:octave, type:type, pos: lastWhiteX + BLACK_OFFSET };
+      }
+    });
+    return { keys: laid, width: whiteX - (WHITE_SPACING - WHITE_W) };
+  }
+  var KEYBOARD_LAYOUT = buildKeyboardLayout();
+  var KEYBOARD_WIDTH = KEYBOARD_LAYOUT.width;
+  var KEYBOARD_HEIGHT = WHITE_H + 20; // padding inside #piano
+
+  // ================= Audio =================
+  var audioCtx = null;
+  function ensureAudio(){
+    if(!audioCtx){ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    if(audioCtx.state === 'suspended'){ audioCtx.resume(); }
+  }
+  function playTone(freq, duration){
+    if(!audioCtx) return;
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+  }
+  document.addEventListener('click', function initAudioOnce(){
+    ensureAudio();
+    document.removeEventListener('click', initAudioOnce);
+  });
+
+  // ================= Staff rendering (VexFlow) =================
+  var VF = Vex.Flow;
+
+  var VF_CFG = {
+    large: { width:300, height:150, staveX:10, staveY:35, staveWidth:260 },
+    small: { width:160, height:105,  staveX:5,  staveY:22, staveWidth:140 }
+  };
+
+  function toVexKey(noteName){
+    var m = noteName.match(/^([A-G]#?)(\d)$/);
+    return m[1].toLowerCase() + '/' + m[2];
+  }
+
+  function vfRenderStaff(container, noteNames, clef, size){
+    var cfg = VF_CFG[size];
+    container.innerHTML = '';
+    var renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
+    renderer.resize(cfg.width, cfg.height);
+    var context = renderer.getContext();
+    context.setFillStyle('#C9BFAF');
+    context.setStrokeStyle('#C9BFAF');
+
+    var stave = new VF.Stave(cfg.staveX, cfg.staveY, cfg.staveWidth);
+    stave.addClef(clef);
+    stave.setContext(context).draw();
+
+    var keys = noteNames.map(toVexKey);
+    var note = new VF.StaveNote({ clef: clef, keys: keys, duration: 'q' });
+    note.setStyle({ fillStyle: '#C9A227', strokeStyle: '#C9A227' });
+
+    VF.Formatter.FormatAndDraw(context, stave, [note]);
+  }
+
+  // ================= Level select screen =================
+  var LEVEL_DEFS = [
+    { level:1, notes:['E4'], clef:'treble', label:'Level 1' },
+    { level:2, notes:['G4'], clef:'treble', label:'Level 2' },
+    { level:3, notes:['B4'], clef:'treble', label:'Level 3' },
+    { level:4, notes:['D5'], clef:'treble', label:'Level 4' },
+    { level:5, notes:['F5'], clef:'treble', label:'Level 5' },
+    { level:6, notes:['E4','G4','B4','D5','F5'], clef:'treble', label:'Level 6' }
+  ];
+
+  function buildHomeScreen(){
+    var grid = document.getElementById('level-grid');
+    grid.innerHTML = '';
+    LEVEL_DEFS.forEach(function(def){
+      var card = document.createElement('div');
+      card.className = 'level-card';
+      var staffDiv = document.createElement('div');
+      staffDiv.className = 'staff-mini';
+      card.appendChild(staffDiv);
+      vfRenderStaff(staffDiv, def.notes, def.clef, 'small');
+      var label = document.createElement('div');
+      label.className = 'level-name';
+      label.textContent = def.label;
+      card.appendChild(label);
+      card.addEventListener('click', function(){ startLevel(def.level); });
+      grid.appendChild(card);
+    });
+
+    var review = document.createElement('div');
+    review.className = 'review-card';
+    review.textContent = 'Review';
+    review.addEventListener('click', function(){ showScreen('screen-review'); });
+    grid.appendChild(review);
+  }
+
+  // ================= Game state =================
+  var state = {
+    level: 1,
+    score: 0,
+    counts: null,      // level 6 only: { E4:0, G4:0, B4:0, D5:0, F5:0 }
+    activeTargets: null,
+    lastScoredTarget: null, // level 6 only: which target most recently gained a point
+    currentQuestion: null,
+    answered: false,
+    distractorTimer: null,
+    clearTimer: null
+  };
+
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
+
+  function renderScoreArea(){
+    var area = document.getElementById('score-area');
+    if(state.level === 6){
+      var row = document.createElement('div');
+      row.className = 'tracker-row';
+      LEVEL6_TARGETS.forEach(function(n){
+        var item = document.createElement('div');
+        item.className = 'tracker-item';
+        item.innerHTML = '<div class="tv" id="tracker-' + n + '">' + state.counts[n] + '/5</div><div class="tl">' + n + '</div>';
+        row.appendChild(item);
+      });
+      area.innerHTML = '';
+      area.appendChild(row);
+    } else {
+      area.innerHTML = '<div class="score-display"><span class="score-value" id="score-value">' + state.score + ' / 10</span><span class="score-label"> points</span></div>';
+    }
+  }
+
+  function updateScoreArea(){
+    if(state.level === 6){
+      LEVEL6_TARGETS.forEach(function(n){
+        var el = document.getElementById('tracker-' + n);
+        if(el) el.textContent = state.counts[n] + '/5';
+      });
+    } else {
+      var el = document.getElementById('score-value');
+      if(el) el.textContent = state.score + ' / 10';
+    }
+  }
+
+  function renderKeyboard(){
+    var piano = document.getElementById('piano');
+    var keysWrap = document.getElementById('piano-keys');
+    piano.style.width = (KEYBOARD_WIDTH + 20) + 'px';
+    piano.style.height = (WHITE_H + 20) + 'px';
+    keysWrap.style.width = KEYBOARD_WIDTH + 'px';
+    keysWrap.style.height = WHITE_H + 'px';
+    keysWrap.innerHTML = '';
+
+    var whites = KEYBOARD_LAYOUT.keys.filter(function(k){ return k.type === 'white'; });
+    var blacks = KEYBOARD_LAYOUT.keys.filter(function(k){ return k.type === 'black'; });
+    var leftmostName = whites[0].name; // C4 — leftmost key on the keyboard
+
+    whites.concat(blacks).forEach(function(k){
+      var el = document.createElement('div');
+      el.className = 'pkey ' + k.type;
+      el.style.left = k.pos + 'px';
+      el.style.width = (k.type === 'white' ? WHITE_W : BLACK_W) + 'px';
+      el.style.height = (k.type === 'white' ? WHITE_H : BLACK_H) + 'px';
+      el.dataset.note = k.name;
+      if(k.name === leftmostName){
+        var label = document.createElement('div');
+        label.className = 'pkey-label';
+        label.textContent = 'M.C.';
+        el.appendChild(label);
+      }
+      el.addEventListener('click', function(){ handleKeyClick(k.name); });
+      keysWrap.appendChild(el);
+    });
+  }
+
+  function repositionKeyboard(){
+    var field = document.getElementById('playfield');
+    var piano = document.getElementById('piano');
+    var fw = field.clientWidth, fh = field.clientHeight;
+    var pw = KEYBOARD_WIDTH + 20, ph = WHITE_H + 20;
+
+    var scale = 1;
+    if(pw > fw){ scale = Math.max(0.55, fw / pw); }
+    piano.style.transformOrigin = 'top left';
+    piano.style.transform = 'scale(' + scale + ')';
+
+    var maxX = Math.max(0, fw - pw * scale);
+    var maxY = Math.max(0, fh - ph * scale);
+    var x = Math.random() * maxX;
+    var y = Math.random() * maxY;
+    piano.style.left = x + 'px';
+    piano.style.top = y + 'px';
+  }
+
+  function flashPiano(kind, callback){
+    var piano = document.getElementById('piano');
+    piano.classList.add(kind === 'good' ? 'flash-good' : 'flash-bad');
+    setTimeout(function(){
+      piano.classList.remove('flash-good', 'flash-bad');
+      callback();
+    }, 450);
+  }
+
+  function startLevel(level){
+    ensureAudio();
+    state.level = level;
+    state.score = 0;
+    state.answered = false;
+    if(state.distractorTimer){ clearTimeout(state.distractorTimer); state.distractorTimer = null; }
+    if(state.clearTimer){ clearTimeout(state.clearTimer); state.clearTimer = null; }
+
+    if(level === 6){
+      state.counts = { E4:0, G4:0, B4:0, D5:0, F5:0 };
+      state.activeTargets = LEVEL6_TARGETS.slice();
+      state.lastScoredTarget = null;
+    } else {
+      state.counts = null;
+      state.activeTargets = null;
+      state.lastScoredTarget = null;
+    }
+
+    renderScoreArea();
+    renderKeyboard();
+    showScreen('screen-game');
+    repositionKeyboard();
+    showNextQuestion();
+  }
+
+  // Levels 1-5 only: once the player has 5+ points, target notes appear under a
+  // 2-second time limit — missing the window costs a point, just like a wrong click.
+  function isTimedFinalStretch(){
+    return state.level >= 1 && state.level <= 5 && state.score >= 5;
+  }
+
+  function showNextQuestion(){
+    if(state.distractorTimer){ clearTimeout(state.distractorTimer); state.distractorTimer = null; }
+    if(state.clearTimer){ clearTimeout(state.clearTimer); state.clearTimer = null; }
+
+    // Block input and briefly blank the staff so back-to-back repeats of the
+    // same note are still visually obvious as a "new" question.
+    state.answered = true;
+    document.getElementById('game-staff').innerHTML = '';
+
+    state.clearTimer = setTimeout(function(){
+      state.clearTimer = null;
+      state.answered = false;
+
+      var q = (state.level === 6) ? pickNoteForLevel6(state.activeTargets) : pickNoteForLevel(state.level);
+      state.currentQuestion = q;
+
+      vfRenderStaff(document.getElementById('game-staff'), [q.note], q.clef, 'large');
+      repositionKeyboard();
+
+      if(!q.isTarget){
+        state.distractorTimer = setTimeout(function(){
+          if(state.answered) return;
+          state.answered = true;
+          showNextQuestion();
+        }, 2000);
+      } else if(isTimedFinalStretch()){
+        state.distractorTimer = setTimeout(function(){
+          if(state.answered) return;
+          state.answered = true;
+          state.score = Math.max(0, state.score - 1);
+          updateScoreArea();
+          flashPiano('bad', function(){
+            showNextQuestion();
+          });
+        }, 2000);
+      }
+    }, 100);
+  }
+
+  function refreshActiveTargets(){
+    state.activeTargets = LEVEL6_TARGETS.filter(function(n){ return state.counts[n] < 5; });
+  }
+
+  function handleKeyClick(clickedNote){
+    if(state.answered) return;
+    if(!state.currentQuestion) return;
+    state.answered = true;
+    if(state.distractorTimer){ clearTimeout(state.distractorTimer); state.distractorTimer = null; }
+
+    playTone(FREQ[clickedNote] || 440, 0.25);
+
+    var q = state.currentQuestion;
+    var correct = q.isTarget && (clickedNote === q.note);
+
+    if(correct){
+      if(state.level === 6){
+        state.counts[q.note] = Math.min(5, state.counts[q.note] + 1);
+        state.lastScoredTarget = q.note;
+        refreshActiveTargets();
+      } else {
+        state.score = Math.min(10, state.score + 1);
+      }
+    } else {
+      if(state.level === 6){
+        if(q.isTarget){
+          state.counts[q.note] = Math.max(0, state.counts[q.note] - 1);
+        } else {
+          var totalPoints = LEVEL6_TARGETS.reduce(function(sum, n){ return sum + state.counts[n]; }, 0);
+          if(totalPoints > 0 && state.lastScoredTarget){
+            state.counts[state.lastScoredTarget] = Math.max(0, state.counts[state.lastScoredTarget] - 1);
+          }
+        }
+        refreshActiveTargets();
+      } else {
+        state.score = Math.max(0, state.score - 1);
+      }
+    }
+
+    updateScoreArea();
+
+    var won = (state.level === 6)
+      ? LEVEL6_TARGETS.every(function(n){ return state.counts[n] >= 5; })
+      : state.score >= 10;
+
+    flashPiano(correct ? 'good' : 'bad', function(){
+      if(won){ endInSuccess(); }
+      else { showNextQuestion(); }
+    });
+  }
+
+  function endInSuccess(){
+    if(state.distractorTimer){ clearTimeout(state.distractorTimer); state.distractorTimer = null; }
+    if(state.clearTimer){ clearTimeout(state.clearTimer); state.clearTimer = null; }
+    var detail = document.getElementById('success-detail');
+    detail.textContent = (state.level === 6)
+      ? 'You scored 5 points on E4, G4, B4, D5, and F5.'
+      : 'You reached 10 points on level ' + state.level + '.';
+    var now = new Date();
+    document.getElementById('success-timestamp').textContent =
+      now.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' }) +
+      ' \u00b7 ' + now.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+    showScreen('screen-success');
+  }
+
+  // ================= Wiring =================
+  document.getElementById('quit-btn').addEventListener('click', function(){
+    if(state.distractorTimer){ clearTimeout(state.distractorTimer); state.distractorTimer = null; }
+    if(state.clearTimer){ clearTimeout(state.clearTimer); state.clearTimer = null; }
+    showScreen('screen-home');
+  });
+  document.getElementById('success-home-btn').addEventListener('click', function(){ showScreen('screen-home'); });
+  document.getElementById('review-home-btn').addEventListener('click', function(){ showScreen('screen-home'); });
+
+  window.addEventListener('resize', function(){
+    if(document.getElementById('screen-game').classList.contains('active')){
+      repositionKeyboard();
+    }
+  });
+
+  buildHomeScreen();
+})();
+</script>
+</body>
+</html>
