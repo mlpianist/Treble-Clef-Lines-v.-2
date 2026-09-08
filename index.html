@@ -311,6 +311,21 @@
     document.removeEventListener('click', initAudioOnce);
   });
 
+  // Sound-effect mp3s. Play alongside the synth click tone, not instead of it.
+  // Files are expected next to this HTML file; missing files just fail silently.
+  var SFX = {
+    correct: new Audio('correct.mp3'),
+    wrong: new Audio('wrong.mp3'),
+    applause: new Audio('applause.mp3')
+  };
+  function playSfx(name){
+    var base = SFX[name];
+    if(!base) return;
+    // Clone so rapid-fire plays don't cut each other off.
+    var el = base.cloneNode();
+    el.play().catch(function(){ /* ignore autoplay/missing-file errors */ });
+  }
+
   // ================= Staff rendering (VexFlow) =================
   var VF = Vex.Flow;
 
@@ -517,6 +532,12 @@
     return state.level >= 1 && state.level <= 5 && state.score >= 5;
   }
 
+  function levelIsComplete(){
+    return (state.level === 6)
+      ? LEVEL6_TARGETS.every(function(n){ return state.counts[n] >= 5; })
+      : state.score >= 10;
+  }
+
   function showNextQuestion(){
     if(state.distractorTimer){ clearTimeout(state.distractorTimer); state.distractorTimer = null; }
     if(state.clearTimer){ clearTimeout(state.clearTimer); state.clearTimer = null; }
@@ -537,17 +558,21 @@
       repositionKeyboard();
 
       if(!q.isTarget){
+        // Distractor shown: if the player does nothing, no sound plays.
         state.distractorTimer = setTimeout(function(){
           if(state.answered) return;
           state.answered = true;
           showNextQuestion();
         }, 2000);
       } else if(isTimedFinalStretch()){
+        // Target shown under the final-stretch timer: missing it is a wrong
+        // answer, so it plays wrong.mp3 just like a wrong click would.
         state.distractorTimer = setTimeout(function(){
           if(state.answered) return;
           state.answered = true;
           state.score = Math.max(0, state.score - 1);
           updateScoreArea();
+          playSfx('wrong');
           flashPiano('bad', function(){
             showNextQuestion();
           });
@@ -597,9 +622,16 @@
 
     updateScoreArea();
 
-    var won = (state.level === 6)
-      ? LEVEL6_TARGETS.every(function(n){ return state.counts[n] >= 5; })
-      : state.score >= 10;
+    var won = levelIsComplete();
+
+    // Sound: correct click that finishes the level -> applause instead of the
+    // regular correct sound. Any other correct click -> correct.mp3.
+    // Any wrong click -> wrong.mp3.
+    if(correct){
+      playSfx(won ? 'applause' : 'correct');
+    } else {
+      playSfx('wrong');
+    }
 
     flashPiano(correct ? 'good' : 'bad', function(){
       if(won){ endInSuccess(); }
